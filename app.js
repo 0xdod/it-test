@@ -39,8 +39,9 @@ app.post('/api/user', async (req, res) => {
 		let user = new User(body);
 		await user.save();
 		res.json(user);
-		const text = `Hello ${body.firstname}, thank you for signing up`;
-
+		const text = `Hello ${body.firstname},
+		thank you for signing up
+		`;
 		sendMail('dolordamilola@gmail.com', user.email, 'Welcome', text);
 	} catch (err) {
 		res.status(400).json({
@@ -48,7 +49,7 @@ app.post('/api/user', async (req, res) => {
 		});
 		logger.log({
 			level: 'error',
-			message: 'err.message',
+			message: err.message,
 		});
 	}
 });
@@ -88,14 +89,20 @@ app.get('/api/user/:id', (req, res) => {
 
 app.patch('/api/user/:id', (req, res) => {
 	let _id = req.params.id;
-	var body = _.pick(req.body, ['firstname', 'lastname', 'email', 'mobile']);
+	//var body = _.pick(req.body, ['firstname', 'lastname', 'email', 'mobile']);
 	if (!ObjectID.isValid(_id)) {
 		return res.status(404).json({
 			error: 'Invalid user id',
 		});
 	}
 
-	User.findOneAndUpdate({ _id }, { $set: body }, { new: true })
+	if (!ObjectID.isValid(_id)) {
+		return res.status(404).json({
+			error: 'Invalid user id',
+		});
+	}
+
+	User.findOneAndUpdate({ _id }, { $set: req.body }, { new: true })
 		.then(user => {
 			if (!user) {
 				return res.status(404).json({
@@ -126,6 +133,10 @@ app.delete('/api/user/:id', async (req, res) => {
 			success: true,
 			user,
 		});
+		const text = `Hello ${body.firstname},
+		you have deactivated you account with us, sad to see you go
+		`;
+		sendMail('dolordamilola@gmail.com', user.email, 'Goodbye', text);
 	} catch (err) {
 		res.status(404).json({ err });
 	}

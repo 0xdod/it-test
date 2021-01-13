@@ -23,7 +23,6 @@ var data = [
     model: 'User',
     documents: [
       {
-        // _id: userOneId,
         email: 'andrew@example.com',
         password: 'userOnePass',
         firstname: 'andrew',
@@ -31,7 +30,6 @@ var data = [
         mobile: '08012345678',
       },
       {
-        // _id: userTwoId,
         email: 'jen@example.com',
         password: 'userTwoPass',
         firstname: 'jen',
