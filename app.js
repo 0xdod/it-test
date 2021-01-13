@@ -18,6 +18,10 @@ app.use(bodyParser.json());
 const port = process.env.port || 3000;
 const mongourl = process.env.MONGODB_URI || 'mongodb://localhost:27017/njsadev';
 
+if (process.env.NODE_ENV === 'test') {
+    mongourl = process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/njsadevTest';
+}
+
 //connect to db.
 mongoose.Promise = global.Promise;
 mongoose.connect(mongourl, {
