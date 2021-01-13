@@ -5,10 +5,11 @@ const _ = require('lodash');
 const mongoose = require('mongoose');
 
 require('dotenv').config({ debug: process.env.DEBUG });
+const { ObjectID } = require('mongodb');
 
-const User = require('./models/user');
+const { User } = require('./models/user');
 const { logger } = require('./logger');
-const ObjectID = mongoose.Schema.ObjectId;
+const { sendMail } = require('./mail');
 
 const app = express();
 app.use(morgan('dev'));
@@ -16,6 +17,7 @@ app.use(bodyParser.json());
 
 const port = process.env.port || 3000;
 const mongourl = process.env.MONGODB_URI || 'mongodb://localhost:27017/njsadev';
+
 //connect to db.
 mongoose.Promise = global.Promise;
 mongoose.connect(mongourl, {
@@ -37,6 +39,9 @@ app.post('/api/user', async (req, res) => {
 		let user = new User(body);
 		await user.save();
 		res.json(user);
+		const text = `Hello ${body.firstname}, thank you for signing up`;
+
+		sendMail('dolordamilola@gmail.com', user.email, 'Welcome', text);
 	} catch (err) {
 		res.status(400).json({
 			error: err.message,
