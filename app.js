@@ -1,41 +1,131 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const express = require('express');
+const morgan = require('morgan');
+const bodyParser = require('body-parser');
+const _ = require('lodash');
+const mongoose = require('mongoose');
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+require('dotenv').config({ debug: process.env.DEBUG });
 
-var app = express();
+const User = require('./models/user');
+const { logger } = require('./logger');
+const ObjectID = mongoose.Schema.ObjectId;
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
+const app = express();
+app.use(morgan('dev'));
+app.use(bodyParser.json());
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
-
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
+const port = process.env.port || 3000;
+const mongourl = process.env.MONGODB_URI || 'mongodb://localhost:27017/njsadev';
+//connect to db.
+mongoose.Promise = global.Promise;
+mongoose.connect(mongourl, {
+	useNewUrlParser: true,
+	useUnifiedTopology: true,
+	useFindAndModify: false,
+	useCreateIndex: true,
 });
 
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
+app.post('/api/user', async (req, res) => {
+	try {
+		var body = _.pick(req.body, [
+			'firstname',
+			'lastname',
+			'email',
+			'mobile',
+		]);
+		body.email = body.email.toLowerCase();
+		let user = new User(body);
+		await user.save();
+		res.json(user);
+	} catch (err) {
+		res.status(400).json({
+			error: err.message,
+		});
+		logger.log({
+			level: 'error',
+			message: 'err.message',
+		});
+	}
 });
+
+app.get('/api/users', (req, res) => {
+	User.find()
+		.then(users => {
+			res.json({ users });
+		})
+		.catch(err =>
+			res.status(400).json({
+				error: err.message,
+			})
+		);
+});
+
+app.get('/api/user/:id', (req, res) => {
+	let _id = req.params.id;
+	if (!ObjectID.isValid(_id)) {
+		return res.status(404).json({
+			error: 'Invalid user id',
+		});
+	}
+	User.findOne({
+		_id,
+	})
+		.then(user => {
+			if (!user) {
+				return res.status(404).json({
+					error: 'user not found',
+				});
+			}
+			res.json({ user });
+		})
+		.catch(err => res.status(404).json({ err }));
+});
+
+app.patch('/api/user/:id', (req, res) => {
+	let _id = req.params.id;
+	var body = _.pick(req.body, ['firstname', 'lastname', 'email', 'mobile']);
+	if (!ObjectID.isValid(_id)) {
+		return res.status(404).json({
+			error: 'Invalid user id',
+		});
+	}
+
+	User.findOneAndUpdate({ _id }, { $set: body }, { new: true })
+		.then(user => {
+			if (!user) {
+				return res.status(404).json({
+					error: 'user not found',
+				});
+			}
+			res.json({ user });
+		})
+		.catch(err => res.status(404).json({ err }));
+});
+
+app.delete('/api/user/:id', async (req, res) => {
+	const _id = req.params.id;
+	if (!ObjectID.isValid(_id)) {
+		return res.status(404).json({
+			error: 'Invalid user id',
+		});
+	}
+	try {
+		const user = await User.findOneAndRemove({ _id });
+		if (!user) {
+			return res.status(404).json({
+				success: true,
+				error: 'user not found',
+			});
+		}
+		res.send({
+			success: true,
+			user,
+		});
+	} catch (err) {
+		res.status(404).json({ err });
+	}
+});
+
+app.listen(port, () => console.log(`App running on port ${port}`));
 
 module.exports = app;
